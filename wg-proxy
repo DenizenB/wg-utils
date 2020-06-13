@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#
+# Creates an isolated tunnel for packets destined to Mullvad's SOCKS5 proxy.
+# Useful for tunneling the traffic of specific applications.
+
+die() {
+	echo "[-] Error: $1" >&2
+	exit 1
+}
+
+validate_config() {
+	[ -f "$1" ] || die "The config file $1 does not exist"
+}
+
+split_config() {
+	INPUT_FILE="$1"
+	CODE="$(basename $INPUT_FILE | sed 's/.conf//')"
+	OUTPUT_FILE="${INPUT_FILE%.conf}-proxy.conf"
+
+	echo "[+] Creating proxy tunnel for $CODE at $OUTPUT_FILE"
+
+	DNS="$(grep DNS $1 | cut -c 7-)"
+
+	cat "$1" \
+		| sed -E "s#AllowedIPs.*#AllowedIPs = 10.64.0.1/32, $DNS/32#" \
+		> "$OUTPUT_FILE"
+}
+
+### Main ###
+
+if [ $# -eq 0 ]; then
+	echo "[+] Usage: wg-proxy <Tunnel config> [Tunnel config]..."
+	exit
+fi
+
+for config in $@; do
+	validate_config "$config"
+	split_config "$config"
+done
