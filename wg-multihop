@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (C) 2016-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+# Modified by SomewhatDisoriented, 2020.
+#
+# Creates multihop configs for Mullvad's VPN servers.
+
+set -e
+
+die() {
+	echo "[-] Error: $1" >&2
+	exit 1
+}
+
+validate_country() {
+	if ! ls $1*.conf >/dev/null 2>&1; then
+		die "No config matching $1*.conf"
+	fi
+}
+
+fetch_servers() {
+	echo "[+] Contacting Mullvad API for server locations."
+	declare -g -A SERVER_PUBKEYS
+	declare -g -A SERVER_MULTIHOPS
+
+	RESPONSE="$(curl -LsS https://api.mullvad.net/public/relays/wireguard/v1/)" \
+		|| die "Unable to connect to Mullvad API."
+	FIELDS="$(jq -r 'foreach .countries[] as $country (.; .; foreach $country.cities[] as $city (.; .; foreach $city.relays[] as $relay (.; .; $relay.hostname, $relay.public_key, $relay.multihop_port)))' <<<"$RESPONSE")" \
+		|| die "Unable to parse response."
+	while read -r HOSTNAME && read -r PUBKEY && read -r MULTIHOP; do
+		CODE="${HOSTNAME%-wireguard}"
+		SERVER_PUBKEYS["$CODE"]="$PUBKEY"
+		SERVER_MULTIHOPS["$CODE"]="$MULTIHOP"
+	done <<<"$FIELDS"
+}
+
+combine_configs() {
+	entry="$(echo $1 | sed 's/\.conf//')"
+	exit="$(basename $2 | sed 's/\.conf//')"
+	outfile="$entry-$exit.conf"
+
+	echo "[+] Combining $entry and $exit into $outfile"
+
+	pubkey="${SERVER_PUBKEYS["$exit"]}"
+	multihop="${SERVER_MULTIHOPS["$exit"]}"
+
+	cat $1 \
+		| sed "s#PublicKey = .*\$#PublicKey = ${pubkey}#" \
+		| sed "s#Endpoint = \\([^:]*\\):.*\$#Endpoint = \\1:${multihop}#" \
+		> "$outfile"
+}
+
+### Main ###
+
+type curl >/dev/null || die "Please install curl and then try again."
+type jq >/dev/null || die "Please install jq and then try again."
+
+if [ $# -lt 2 ]; then
+	echo "[+] Usage: wg-multihop <Entry country> <Exit country> <Count>"
+	exit
+fi
+
+ENTRY_COUNTRY="$1"
+EXIT_COUNTRY="$2"
+COUNT="$3"
+
+validate_country "$ENTRY_COUNTRY"
+validate_country "$EXIT_COUNTRY"
+
+fetch_servers
+
+for i in $(seq "$COUNT"); do
+	ENTRY="$(ls $ENTRY_COUNTRY*.conf | shuf -n 1)"
+	EXIT="$(ls $EXIT_COUNTRY*.conf | shuf -n 1)"
+
+	combine_configs "$ENTRY" "$EXIT"
+done
