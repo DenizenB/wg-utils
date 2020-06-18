@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Creates an isolated tunnel for packets destined to Mullvad's SOCKS5 proxy.
+# Creates a split tunnel for packets destined to Mullvad's SOCKS5 proxy.
 # Useful for tunneling the traffic of specific applications.
 
 die() {
@@ -15,9 +15,9 @@ validate_config() {
 split_config() {
 	INPUT_FILE="$1"
 	CODE="$(basename $INPUT_FILE | sed 's/.conf//')"
-	OUTPUT_FILE="${INPUT_FILE%.conf}-proxy.conf"
+	OUTPUT_FILE="split-$INPUT_FILE"
 
-	echo "[+] Creating proxy tunnel for $CODE at $OUTPUT_FILE"
+	echo "[+] Creating split tunnel for $CODE at $OUTPUT_FILE"
 
 	DNS="$(grep DNS $1 | cut -c 7-)"
 
@@ -29,7 +29,7 @@ split_config() {
 ### Main ###
 
 if [ $# -eq 0 ]; then
-	echo "[+] Usage: wg-proxy <Tunnel config> [Tunnel config]..."
+	echo "[+] Usage: wg-split <Tunnel config> [Tunnel config]..."
 	exit
 fi
 
