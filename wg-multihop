@@ -71,8 +71,8 @@ validate_country "$EXIT_COUNTRY"
 fetch_servers
 
 for i in $(seq "$COUNT"); do
-	ENTRY="$(ls $ENTRY_COUNTRY*.conf | shuf -n 1)"
-	EXIT="$(ls $EXIT_COUNTRY*.conf | shuf -n 1)"
+	ENTRY="$(ls $ENTRY_COUNTRY*.conf | grep -v '-' | shuf -n 1)"
+	EXIT="$(ls $EXIT_COUNTRY*.conf | grep -v '-' | shuf -n 1)"
 
 	combine_configs "$ENTRY" "$EXIT"
 done
