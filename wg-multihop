@@ -53,6 +53,8 @@ combine_configs() {
 
 ### Main ###
 
+umask 077
+
 type curl >/dev/null || die "Please install curl and then try again."
 type jq >/dev/null || die "Please install jq and then try again."
 

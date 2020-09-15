@@ -28,6 +28,8 @@ split_config() {
 
 ### Main ###
 
+umask 077
+
 if [ $# -eq 0 ]; then
 	echo "[+] Usage: wg-split <Tunnel config> [Tunnel config]..."
 	exit
