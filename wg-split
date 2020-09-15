@@ -8,20 +8,24 @@ die() {
 	exit 1
 }
 
+info() {
+	echo "[+] $1"
+}
+
 validate_config() {
 	[ -f "$1" ] || die "The config file $1 does not exist"
 }
 
 split_config() {
 	INPUT_FILE="$1"
-	CODE="$(basename $INPUT_FILE | sed 's/.conf//')"
-	OUTPUT_FILE="split-$INPUT_FILE"
+	CODE="$(basename ""${INPUT_FILE%.conf}"")"
+	DNS="$(grep DNS ""$INPUT_FILE"" | cut -c 7-)"
 
-	echo "[+] Creating split tunnel for $CODE at $OUTPUT_FILE"
+	OUTPUT_FILE="split-$CODE.conf"
 
-	DNS="$(grep DNS $1 | cut -c 7-)"
+	info "Creating split tunnel for $CODE at $OUTPUT_FILE"
 
-	cat "$1" \
+	cat "$INPUT_FILE" \
 		| sed -E "s#AllowedIPs.*#AllowedIPs = 10.64.0.1/32, $DNS/32#" \
 		> "$OUTPUT_FILE"
 }
@@ -31,7 +35,7 @@ split_config() {
 umask 077
 
 if [ $# -eq 0 ]; then
-	echo "[+] Usage: wg-split <Tunnel config> [Tunnel config]..."
+	info "Usage: wg-split <Tunnel config> [Tunnel config]..."
 	exit
 fi
 

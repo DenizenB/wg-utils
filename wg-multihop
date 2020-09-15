@@ -13,6 +13,10 @@ die() {
 	exit 1
 }
 
+info() {
+	echo "[+] $1"
+}
+
 validate_country() {
 	if ! ls $1*.conf >/dev/null 2>&1; then
 		die "No config matching $1*.conf"
@@ -36,19 +40,23 @@ fetch_servers() {
 }
 
 combine_configs() {
-	entry="$(echo $1 | sed 's/\.conf//')"
-	exit="$(basename $2 | sed 's/\.conf//')"
-	outfile="$entry-$exit.conf"
+	ENTRY_FILE="$1"
+	EXIT_FILE="$2"
 
-	echo "[+] Combining $entry and $exit into $outfile"
+	ENTRY_CODE="$(basename ""${ENTRY_FILE%.conf}"")"
+	EXIT_CODE="$(basename ""${EXIT_FILE%.conf}"")"
 
-	pubkey="${SERVER_PUBKEYS["$exit"]}"
-	multihop="${SERVER_MULTIHOPS["$exit"]}"
+	OUTPUT_FILE="${ENTRY_FILE%.conf}-$EXIT_CODE.conf"
 
-	cat $1 \
-		| sed "s#PublicKey = .*\$#PublicKey = ${pubkey}#" \
-		| sed "s#Endpoint = \\([^:]*\\):.*\$#Endpoint = \\1:${multihop}#" \
-		> "$outfile"
+	PUBKEY="${SERVER_PUBKEYS["$EXIT_CODE"]}"
+	MULTIHOP="${SERVER_MULTIHOPS["$EXIT_CODE"]}"
+
+	info "Combining $ENTRY_CODE and $EXIT_CODE into $OUTPUT_FILE"
+
+	cat "$ENTRY_FILE" \
+		| sed "s#PublicKey = .*\$#PublicKey = ${PUBKEY}#" \
+		| sed "s#Endpoint = \\([^:]*\\):.*\$#Endpoint = \\1:${MULTIHOP}#" \
+		> "$OUTPUT_FILE"
 }
 
 ### Main ###
@@ -59,7 +67,7 @@ type curl >/dev/null || die "Please install curl and then try again."
 type jq >/dev/null || die "Please install jq and then try again."
 
 if [ $# -lt 2 ]; then
-	echo "[+] Usage: wg-multihop <Entry country> <Exit country> <Count>"
+	info "Usage: wg-multihop <Entry country> <Exit country> <Count>"
 	exit
 fi
 
