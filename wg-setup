@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -e
+
+die() {
+	echo "[-] Error: $1" >&2
+	exit 1
+}
+
+info() {
+	echo "[+] $1"
+}
+
+### Main ###
+
+type wg-split >/dev/null || die "Unknown command wg-split"
+#type wg-multihop >/dev/null || die "Unknown command wg-multihop"
+
+if [ $# -ne 1 ]; then
+	info "Usage: wg-setup <directory>"
+	exit
+fi
+
+# Get folder
+DIR="$1"
+
+# Assert folder exists
+[ -d "$DIR" ] || die "That's not a directory"
+
+cd "$DIR"
+
+info "Removing g/o file permissions"
+find -type f -exec chmod go-rw {} +
+
+info "Trimming 'mullvad-' from configuration names"
+for file in mullvad-*.conf; do
+	mv "$file" "${file#mullvad\-}"
+done
+
+info "Creating split configs for Swedish servers"
+wg-split se*.conf
