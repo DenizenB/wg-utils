@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+sudo wg | head -1 | awk '{print $2}'
