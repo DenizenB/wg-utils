@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+SRC_PLAIN="https://ifconfig.co"
+SRC_VPN="https://am.i.mullvad.net/ip"
+
+vpn="$(vpn)"
+
+if [ -z $vpn ]; then
+    curl $SRC_PLAIN
+elif [[ $vpn =~ 'split' ]]; then
+    curl $SRC_PLAIN
+    curl --proxy "socks5://10.64.0.1:1080" $SRC_VPN
+else
+    curl $SRC_VPN
+fi
