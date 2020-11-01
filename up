@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+die() {
+	echo "[-] Error: $1" >&2
+	exit 1
+}
+
+info() {
+	echo "[+] $1"
+}
+
+if [ ! -z $1 ]; then
+	vpn="$1"
+
+	if [ ! -f "/etc/wireguard/$vpn.conf" ]; then
+		die "$1 is not a valid vpn"
+	fi
+fi
+
+current="$(vpn)"
+
+if [ ! -z "$current" ]; then
+	sudo wg-quick down "$current"
+	
+	if [ -z "$vpn" ]; then
+		vpn="$current"
+	fi
+fi
+
+if [ -z "$vpn" ]; then
+	echo "Usage: up <vpn>"
+	exit
+fi
+
+while ! sudo wg-quick up "$vpn"; do
+	echo "[-] Error: unable to create tunnel. Retrying in 1 sec" >&2
+	sleep 1
+done

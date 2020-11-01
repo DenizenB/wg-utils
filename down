@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+current="$(vpn)"
+
+if [ ! -z "$current" ]; then
+	sudo wg-quick down "$current"
+fi
