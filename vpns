@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+vpn="$(vpn)"
+cols="$(stty size | awk '{print $2}')"
+
+if [ -z $vpn ]; then
+	vpn="none"
+fi
+
+find /etc/wireguard/ -maxdepth 1 -name '*.conf' \
+	| xargs -L1 basename \
+	| sed 's/\.conf//' \
+	| sort -V \
+	| column -c $cols \
+	| grep -E --color "\b$vpn\b|$"
