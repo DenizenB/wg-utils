@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+import requests
+import socket
+import argparse
+import random
+
+from subprocess import run
+from sys import stderr
+
+def get_proxies(countries):
+    r = requests.get("https://api.mullvad.net/www/relays/all/")
+    r.raise_for_status()
+    servers = r.json()
+
+    for server in servers:
+        # Active servers with socks proxy
+        if not server['active'] or 'socks_name' not in server:
+            continue
+
+        if not server['country_code'] in countries:
+            continue
+
+        # Resolve proxy IP
+        hostname = server['socks_name'] + ".mullvad.net"
+        try:
+            ip = socket.gethostbyname(hostname)
+            yield ip
+        except:
+            print(f"[-] Failed to resolve {hostname}", file=stderr)
+
+def build_iptables_chain(chain_name, proxies):
+    run(["iptables", "-t", "nat", "-N", chain_name], capture_output=True)
+    run(["iptables", "-t", "nat", "-F", chain_name], capture_output=True)
+
+    count = len(proxies)
+
+    for i, proxy in enumerate(proxies):
+        run(["iptables", "-t", "nat", "-A", chain_name,
+            "-p", "tcp",
+            "-m", "statistic",
+            "--mode", "nth",
+            "--packet", "0",
+            "--every", str(count - i),
+            "-j", "DNAT",
+            "--to-destination", f"{proxy}:1080"
+        ], check=True)
+
+def main():
+    parser = argparse.ArgumentParser("Mullvad round-robin chain generator")
+    parser.add_argument("name", help="Name of iptables chain")
+    parser.add_argument("--countries", help="Comma-separated country codes", default="se")
+    args = parser.parse_args()
+
+    name = args.name
+    countries = args.countries.lower().split(",")
+
+    print("[+] Resolving Mullvad proxies", file=stderr)
+    proxies = get_proxies(countries)
+    proxies = list(proxies)
+    random.shuffle(proxies)
+
+    print(f"[+] Building round-robin chain {args.name} with {len(proxies)} exits", file=stderr)
+    build_iptables_chain(name, proxies)
+
+main()
